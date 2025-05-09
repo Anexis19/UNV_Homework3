@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Image Editor</title>
+</head>
+<body>
+  <h4>Image Editor 0.1</h4>
+
+  <label for="image">Seleccione imagen</label>
+  <input type="file" id="image" name="image" accept="image/png, image/jpeg"><br>
+  <hr>
+
+  <!-- Sliders para RGB -->
+  <div>
+    <label for="rangeR">Rojo</label>
+    <input type="range" id="rangeR" min="0" max="200" value="100">
+    <span id="valR">100%</span><br>
+
+    <label for="rangeG">Verde</label>
+    <input type="range" id="rangeG" min="0" max="200" value="100">
+    <span id="valG">100%</span><br>
+
+    <label for="rangeB">Azul</label>
+    <input type="range" id="rangeB" min="0" max="200" value="100">
+    <span id="valB">100%</span><br>
+
+    <button id="restaurar">Restaurar</button>
+  </div>
+
+  <hr>
+  <canvas id="canvas"></canvas>
+  <canvas id="canvas2"></canvas>
+
+  <button id="gris">Escala de grises</button>
+  <button id="gris2">Escala de grises 2</button>
+  <button id="sepia">Sepia</button>
+
+  <script>
+    var imgDataOriginal;
+
+    var canvas = document.getElementById("canvas");
+    canvas.willReadFrequently = true;
+    var ctx = canvas.getContext("2d");
+
+    var canvas2 = document.getElementById("canvas2");
+    canvas2.willReadFrequently = true;
+    var ctx2 = canvas2.getContext("2d");
+
+    var image = new Image();
+    image.crossOrigin = "anonymous";
+    image.src = "banner.jpg";
+
+    image.addEventListener("load", function () {
+      canvas.width = image.width;
+      canvas.height = image.height;
+      canvas2.width = image.width;
+      canvas2.height = image.height;
+
+      ctx.drawImage(this, 0, 0, image.width, image.height);
+      const imgTmpData = ctx.getImageData(0, 0, image.width, image.height);
+      imgDataOriginal = new ImageData(
+        new Uint8ClampedArray(imgTmpData.data),
+        image.width,
+        image.height
+      );
+    });
+
+    function escalaGrises() {
+      var imgTmpData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      let imgData2 = imgTmpData.data;
+      let gris;
+      for (var n = 0; n < imgData2.length; n += 4) {
+        gris = (imgData2[n] + imgData2[n + 1] + imgData2[n + 2]) / 3;
+        imgData2[n] = gris;
+        imgData2[n + 1] = gris;
+        imgData2[n + 2] = gris;
+      }
+      ctx2.putImageData(imgTmpData, 0, 0);
+    }
+
+    function escalaGrises2() {
+      var imgTmpData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      let imgData2 = imgTmpData.data;
+      let gris;
+      for (var n = 0; n < imgData2.length; n += 4) {
+        gris = imgData2[n] * 0.33 + imgData2[n + 1] * 0.52 + imgData2[n + 2] * 0.15;
+        imgData2[n] = gris;
+        imgData2[n + 1] = gris;
+        imgData2[n + 2] = gris;
+      }
+      ctx2.putImageData(imgTmpData, 0, 0);
+    }
+
+    function sepia() {
+      var imgTmpData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      let imgData2 = imgTmpData.data;
+      for (var n = 0; n < imgData2.length; n += 4) {
+        let r = imgData2[n], g = imgData2[n + 1], b = imgData2[n + 2];
+        imgData2[n]     = r * 0.393 + g * 0.769 + b * 0.189;
+        imgData2[n + 1] = r * 0.349 + g * 0.686 + b * 0.168;
+        imgData2[n + 2] = r * 0.272 + g * 0.534 + b * 0.131;
+      }
+      ctx2.putImageData(imgTmpData, 0, 0);
+    }
+
+    function loadImage(event) {
+      const file = event.target.files[0];
+      const reader = new FileReader();
+      reader.onload = function () {
+        const img = new Image();
+        img.onload = function () {
+          const fixedWidth = 400;
+          const fixedHeight = 300;
+
+          canvas.width = fixedWidth;
+          canvas.height = fixedHeight;
+          canvas2.width = fixedWidth;
+          canvas2.height = fixedHeight;
+
+          ctx.drawImage(img, 0, 0, fixedWidth, fixedHeight);
+
+          const imgTmpData = ctx.getImageData(0, 0, fixedWidth, fixedHeight);
+          imgDataOriginal = new ImageData(
+            new Uint8ClampedArray(imgTmpData.data),
+            fixedWidth,
+            fixedHeight
+          );
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function modificarRGB() {
+      let rValue = document.getElementById("rangeR").value / 100;
+      let gValue = document.getElementById("rangeG").value / 100;
+      let bValue = document.getElementById("rangeB").value / 100;
+
+      document.getElementById("valR").innerText = `${Math.round(rValue * 100)}%`;
+      document.getElementById("valG").innerText = `${Math.round(gValue * 100)}%`;
+      document.getElementById("valB").innerText = `${Math.round(bValue * 100)}%`;
+
+      let imgTmpData = new ImageData(
+        new Uint8ClampedArray(imgDataOriginal.data),
+        canvas.width,
+        canvas.height
+      );
+
+      let data = imgTmpData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        data[i] = data[i] * rValue;
+        data[i + 1] = data[i + 1] * gValue;
+        data[i + 2] = data[i + 2] * bValue;
+      }
+
+      ctx2.putImageData(imgTmpData, 0, 0);
+    }
+
+    function restaurarImagen() {
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      ctx2.putImageData(imgDataOriginal, 0, 0);
+      document.getElementById("rangeR").value = 100;
+      document.getElementById("rangeG").value = 100;
+      document.getElementById("rangeB").value = 100;
+      document.getElementById("valR").innerText = "100%";
+      document.getElementById("valG").innerText = "100%";
+      document.getElementById("valB").innerText = "100%";
+    }
+
+    document.getElementById("gris").addEventListener("click", escalaGrises);
+    document.getElementById("gris2").addEventListener("click", escalaGrises2);
+    document.getElementById("sepia").addEventListener("click", sepia);
+    document.getElementById("image").addEventListener("change", loadImage);
+
+    document.getElementById("rangeR").addEventListener("input", modificarRGB);
+    document.getElementById("rangeG").addEventListener("input", modificarRGB);
+    document.getElementById("rangeB").addEventListener("input", modificarRGB);
+    document.getElementById("restaurar").addEventListener("click", restaurarImagen);
+  </script>
+</body>
+</html>
